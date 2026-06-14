@@ -30,7 +30,8 @@ jobs:
 
             echo "🐳 重建并启动容器..."
             [ -f .env.local ] || touch .env.local
-            docker compose down
+            docker compose down 2>/dev/null || true
+            docker rm -f portfolio 2>/dev/null || true
             docker compose up -d --build --remove-orphans
 
             echo "🧹 清理悬空镜像..."
