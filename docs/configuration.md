@@ -10,7 +10,7 @@
 | `tailwind.config.js` | Tailwind CSS 自定义配置 |
 | `postcss.config.js` | PostCSS 插件（Tailwind + Autoprefixer） |
 | `eslint.config.mjs` | ESLint 规则 |
-| `docker-compose.yml` | Docker 编排（dev + prod） |
+| `docker-compose.yml` | Docker 生产环境编排 |
 | `.env.example` | 环境变量模板 |
 
 ## Next.js 配置
@@ -31,37 +31,36 @@
 
 ## Docker 部署
 
-### 开发环境
-
-```bash
-docker-compose up dev
-```
-
-- 端口：3000
-- 热重载：通过 volume 挂载
-
 ### 生产环境
 
 ```bash
-docker-compose up prod
+docker compose up -d --build
 ```
 
-- 端口：3005（映射到容器内 3000）
-- 多阶段构建
+- 服务名：`app`
+- 容器名：`portfolio`
+- 端口：3000（映射到容器内 3000）
+- 使用多阶段构建和非 root 用户运行
+- 内置 HTTP 健康检查
 
 ## CI/CD 自动部署
 
 **文件**：`.github/workflows/deploy.yml`
 
-推送 `release/master-xxxxxx` 分支（如 `release/master-260614`）时，GitHub Actions 自动通过 SSH 连接服务器执行部署。
+推送 `release/master-xxxxxx` 分支（如 `release/master-260614`）时，GitHub Actions 进入受保护的 `production` Environment，并通过 SSH 连接服务器执行部署。
 
 ### 流程
 
 1. GitHub Actions 触发
-2. SSH 连接到目标服务器
-3. 拉取最新代码（`git fetch + reset`）
-4. `docker compose down → up -d --build` 重建容器
-5. 清理悬空镜像
+2. 通过 `production` Environment 的部署规则
+3. 校验 SSH 主机指纹并连接目标服务器
+4. 拉取并重置到本次触发事件对应的固定 commit SHA
+5. 在现有服务运行期间构建新镜像
+6. 替换容器并等待健康检查通过
+7. 健康检查失败时输出容器状态和最近日志，并将部署标记为失败
+8. 清理悬空镜像
+
+同一时间只允许一个生产部署任务运行；后续任务会等待当前部署结束，避免并发修改同一服务器，同时避免部署过程被中途取消。
 
 ### 需要配置的 GitHub Secrets
 
@@ -72,6 +71,17 @@ docker-compose up prod
 | `DEPLOY_SSH_KEY` | SSH 私钥（完整内容） |
 | `DEPLOY_PORT` | SSH 端口（默认 22） |
 | `DEPLOY_PATH` | 服务器上项目目录的绝对路径 |
+| `DEPLOY_HOST_FINGERPRINT` | SSH 主机公钥的 SHA256 指纹 |
+
+### GitHub Environment
+
+仓库中必须创建名为 `production` 的 Environment，并建议配置：
+
+- Required reviewers：生产部署审批人
+- Deployment branches：仅允许 `release/master-*`
+- Secrets：将上述部署凭据存放在 `production` Environment 中
+
+服务器需安装支持 `docker compose up --wait` 的 Docker Compose，并确保部署用户只能访问部署所需目录和 Docker 权限。
 
 ## npm 脚本
 
