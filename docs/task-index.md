@@ -53,8 +53,9 @@ pnpm dev               # http://localhost:3000
 ```
 
 ### Docker 部署
-- **开发**：`docker-compose up dev`（端口 3000）
-- **生产**：`docker-compose up prod`（端口 3005）
+- **本机容器**：`docker compose up -d --build`（端口 3000）
+- **腾讯云生产**：`docker compose -f docker-compose.prod.yml up -d --build --wait`（Nginx 提供 80/443）
+- **自动部署**：`.github/workflows/deploy.yml`
 
 ### 添加新的远程图片域名
 - **先看**：`next.config.js` 的 `images.remotePatterns`

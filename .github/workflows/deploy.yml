@@ -105,12 +105,21 @@ jobs:
 
             echo "🐳 构建新镜像..."
             [ -f .env.local ] || touch .env.local
-            docker compose build app
+            test -f /home/nginx/default.conf || {
+              echo "/home/nginx/default.conf 不存在" >&2
+              exit 1
+            }
+            test -d /home/nginx/ssl/dev.qingfu.site_nginx || {
+              echo "/home/nginx/ssl/dev.qingfu.site_nginx 不存在" >&2
+              exit 1
+            }
+            docker compose -f docker-compose.prod.yml build app
 
             echo "🔄 替换并验证容器..."
-            if ! docker compose up -d --no-build --remove-orphans --wait --wait-timeout 60; then
-              docker compose ps
-              docker compose logs --tail=100 app
+            if ! docker compose -f docker-compose.prod.yml up \
+              -d --no-build --remove-orphans --wait --wait-timeout 90; then
+              docker compose -f docker-compose.prod.yml ps
+              docker compose -f docker-compose.prod.yml logs --tail=100 app nginx
               exit 1
             fi
 

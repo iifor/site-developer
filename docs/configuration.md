@@ -10,7 +10,8 @@
 | `tailwind.config.js` | Tailwind CSS 自定义配置 |
 | `postcss.config.js` | PostCSS 插件（Tailwind + Autoprefixer） |
 | `eslint.config.mjs` | ESLint 规则 |
-| `docker-compose.yml` | Docker 生产环境编排 |
+| `docker-compose.yml` | 本机直连端口的单服务 Docker 编排 |
+| `docker-compose.prod.yml` | 腾讯云生产编排（应用 + Nginx + HTTPS） |
 | `.env.example` | 环境变量模板 |
 
 ## Next.js 配置
@@ -34,14 +35,23 @@
 ### 生产环境
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build --wait
 ```
 
-- 服务名：`app`
-- 容器名：`portfolio`
-- 端口：3000（映射到容器内 3000）
+- 服务：`app`、`nginx`
+- 容器名：`portfolio`、`nginx-proxy`
+- `app` 仅在 Docker 网络内暴露 3000，不直接映射公网端口
+- Nginx 对外提供 80/443，并反向代理到 `app:3000`
 - 使用多阶段构建和非 root 用户运行
-- 内置 HTTP 健康检查
+- 应用和 Nginx 均配置健康检查
+
+生产服务器必须预先提供：
+
+| 路径 | 用途 |
+|------|------|
+| `/home/nginx/default.conf` | Nginx 站点与反向代理配置 |
+| `/home/nginx/ssl/dev.qingfu.site_nginx` | HTTPS 证书目录 |
+| `<DEPLOY_PATH>/.env.local` | 应用运行环境变量，不提交到 Git |
 
 ## CI/CD 自动部署
 
@@ -56,10 +66,11 @@ docker compose up -d --build
 3. 从 GitHub Runner 扫描服务器公开主机密钥，并校验 `DEPLOY_HOST_FINGERPRINT`
 4. SSH Action 再次校验主机指纹并连接目标服务器
 5. 拉取并重置到本次触发事件对应的固定 commit SHA
-6. 在现有服务运行期间构建新镜像
-7. 替换容器并等待健康检查通过
-8. 健康检查失败时输出容器状态和最近日志，并将部署标记为失败
-9. 清理悬空镜像
+6. 校验服务器 Nginx 配置和证书挂载路径
+7. 使用 `docker-compose.prod.yml` 在现有服务运行期间构建新镜像
+8. 替换应用与 Nginx 容器并等待健康检查通过
+9. 健康检查失败时输出两个容器的状态和最近日志，并将部署标记为失败
+10. 清理悬空镜像
 
 同一时间只允许一个生产部署任务运行；后续任务会等待当前部署结束，避免并发修改同一服务器，同时避免部署过程被中途取消。
 
@@ -84,7 +95,7 @@ docker compose up -d --build
 
 `DEPLOY_HOST_FINGERPRINT` 必须创建为 Environment secret。不要再创建同名 Environment variable；workflow 不读取 `vars.DEPLOY_HOST_FINGERPRINT`。当前 `drone-ssh` 客户端会优先协商服务器的 ECDSA 主机密钥，因此必须填写预检输出中 `(ECDSA)` 行的 `SHA256:...`，不能填写 ED25519 或 RSA 行。Secret 值只能包含单行完整指纹，不能包含位数、算法名、主机名、引号、空格或换行。
 
-服务器需安装支持 `docker compose up --wait` 的 Docker Compose，并确保部署用户只能访问部署所需目录和 Docker 权限。
+服务器需安装支持 `docker compose up --wait` 的 Docker Compose，并确保部署用户能访问部署目录、`/home/nginx` 配置和 Docker。生产 Compose 已纳入 Git 管理，服务器不应再维护未跟踪的同名文件。
 
 ## npm 脚本
 
