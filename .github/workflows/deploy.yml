@@ -29,6 +29,7 @@ jobs:
             git clean -fd
 
             echo "🐳 重建并启动容器..."
+            [ -f .env.local ] || touch .env.local
             docker compose down
             docker compose up -d --build --remove-orphans
 
