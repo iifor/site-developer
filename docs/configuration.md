@@ -53,12 +53,13 @@ docker compose up -d --build
 
 1. GitHub Actions 触发
 2. 通过 `production` Environment 的部署规则
-3. 校验 SSH 主机指纹并连接目标服务器
-4. 拉取并重置到本次触发事件对应的固定 commit SHA
-5. 在现有服务运行期间构建新镜像
-6. 替换容器并等待健康检查通过
-7. 健康检查失败时输出容器状态和最近日志，并将部署标记为失败
-8. 清理悬空镜像
+3. 从 GitHub Runner 扫描服务器公开主机密钥，并校验 `DEPLOY_HOST_FINGERPRINT`
+4. SSH Action 再次校验主机指纹并连接目标服务器
+5. 拉取并重置到本次触发事件对应的固定 commit SHA
+6. 在现有服务运行期间构建新镜像
+7. 替换容器并等待健康检查通过
+8. 健康检查失败时输出容器状态和最近日志，并将部署标记为失败
+9. 清理悬空镜像
 
 同一时间只允许一个生产部署任务运行；后续任务会等待当前部署结束，避免并发修改同一服务器，同时避免部署过程被中途取消。
 
@@ -80,6 +81,8 @@ docker compose up -d --build
 - Required reviewers：生产部署审批人
 - Deployment branches：仅允许 `release/master-*`
 - Secrets：将上述部署凭据存放在 `production` Environment 中
+
+`DEPLOY_HOST_FINGERPRINT` 必须创建为 Environment secret。不要再创建同名 Environment variable；workflow 不读取 `vars.DEPLOY_HOST_FINGERPRINT`。Secret 值只能包含完整的 `SHA256:...`，不能包含位数、算法名、主机名、引号或空格。
 
 服务器需安装支持 `docker compose up --wait` 的 Docker Compose，并确保部署用户只能访问部署所需目录和 Docker 权限。
 

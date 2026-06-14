@@ -19,6 +19,46 @@ jobs:
     environment: production
     timeout-minutes: 20
     steps:
+      - name: Verify SSH host fingerprint
+        shell: bash
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT || 22 }}
+          EXPECTED_FINGERPRINT: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+
+          test -n "$DEPLOY_HOST" || {
+            echo "::error::DEPLOY_HOST 未配置"
+            exit 1
+          }
+          test -n "$EXPECTED_FINGERPRINT" || {
+            echo "::error::DEPLOY_HOST_FINGERPRINT 未配置"
+            exit 1
+          }
+
+          host_keys="$(mktemp)"
+          trap 'rm -f "$host_keys"' EXIT
+          ssh-keyscan -T 10 -p "$DEPLOY_PORT" "$DEPLOY_HOST" \
+            2>/dev/null > "$host_keys"
+
+          test -s "$host_keys" || {
+            echo "::error::无法从 $DEPLOY_HOST:$DEPLOY_PORT 获取 SSH 主机公钥"
+            exit 1
+          }
+
+          echo "服务器公开的 SSH 主机指纹："
+          ssh-keygen -lf "$host_keys" -E sha256
+
+          if ! ssh-keygen -lf "$host_keys" -E sha256 \
+            | awk '{print $2}' \
+            | grep -Fxq "$EXPECTED_FINGERPRINT"; then
+            echo "::error::production Environment secret DEPLOY_HOST_FINGERPRINT 与服务器公开指纹不匹配"
+            exit 1
+          fi
+
+          echo "DEPLOY_HOST_FINGERPRINT 匹配成功"
+
       - name: Deploy to server
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         env:
