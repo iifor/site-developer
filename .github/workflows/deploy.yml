@@ -36,6 +36,10 @@ jobs:
             echo "::error::DEPLOY_HOST_FINGERPRINT 未配置"
             exit 1
           }
+          if [[ ! "$EXPECTED_FINGERPRINT" =~ ^SHA256:[A-Za-z0-9+/]+$ ]]; then
+            echo "::error::DEPLOY_HOST_FINGERPRINT 必须是单行 SHA256 指纹，且不能包含空格或换行"
+            exit 1
+          fi
 
           host_keys="$(mktemp)"
           trap 'rm -f "$host_keys"' EXIT
@@ -50,9 +54,15 @@ jobs:
           echo "服务器公开的 SSH 主机指纹："
           ssh-keygen -lf "$host_keys" -E sha256
 
-          if ! ssh-keygen -lf "$host_keys" -E sha256 \
-            | awk '{print $2}' \
-            | grep -Fxq "$EXPECTED_FINGERPRINT"; then
+          matched=false
+          while IFS= read -r actual_fingerprint; do
+            if [[ "$actual_fingerprint" == "$EXPECTED_FINGERPRINT" ]]; then
+              matched=true
+              break
+            fi
+          done < <(ssh-keygen -lf "$host_keys" -E sha256 | awk '{print $2}')
+
+          if [[ "$matched" != true ]]; then
             echo "::error::production Environment secret DEPLOY_HOST_FINGERPRINT 与服务器公开指纹不匹配"
             exit 1
           fi

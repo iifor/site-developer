@@ -82,7 +82,7 @@ docker compose up -d --build
 - Deployment branches：仅允许 `release/master-*`
 - Secrets：将上述部署凭据存放在 `production` Environment 中
 
-`DEPLOY_HOST_FINGERPRINT` 必须创建为 Environment secret。不要再创建同名 Environment variable；workflow 不读取 `vars.DEPLOY_HOST_FINGERPRINT`。Secret 值只能包含完整的 `SHA256:...`，不能包含位数、算法名、主机名、引号或空格。
+`DEPLOY_HOST_FINGERPRINT` 必须创建为 Environment secret。不要再创建同名 Environment variable；workflow 不读取 `vars.DEPLOY_HOST_FINGERPRINT`。Secret 值只能包含单行完整的 `SHA256:...`，不能包含位数、算法名、主机名、引号、空格或换行。编辑 Secret 时应手动粘贴指纹文本，不要复制整行命令输出。
 
 服务器需安装支持 `docker compose up --wait` 的 Docker Compose，并确保部署用户只能访问部署所需目录和 Docker 权限。
 
