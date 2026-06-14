@@ -54,20 +54,21 @@ jobs:
           echo "服务器公开的 SSH 主机指纹："
           ssh-keygen -lf "$host_keys" -E sha256
 
-          matched=false
-          while IFS= read -r actual_fingerprint; do
-            if [[ "$actual_fingerprint" == "$EXPECTED_FINGERPRINT" ]]; then
-              matched=true
-              break
-            fi
-          done < <(ssh-keygen -lf "$host_keys" -E sha256 | awk '{print $2}')
+          negotiated_fingerprint="$(
+            ssh-keygen -lf "$host_keys" -E sha256 \
+              | awk '$NF == "(ECDSA)" { print $2; exit }'
+          )"
+          test -n "$negotiated_fingerprint" || {
+            echo "::error::服务器未提供 drone-ssh 优先协商的 ECDSA 主机密钥"
+            exit 1
+          }
 
-          if [[ "$matched" != true ]]; then
-            echo "::error::production Environment secret DEPLOY_HOST_FINGERPRINT 与服务器公开指纹不匹配"
+          if [[ "$negotiated_fingerprint" != "$EXPECTED_FINGERPRINT" ]]; then
+            echo "::error::DEPLOY_HOST_FINGERPRINT 必须配置为上方 ECDSA 行的 SHA256 指纹"
             exit 1
           fi
 
-          echo "DEPLOY_HOST_FINGERPRINT 匹配成功"
+          echo "DEPLOY_HOST_FINGERPRINT 与 drone-ssh 使用的 ECDSA 指纹匹配"
 
       - name: Deploy to server
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
