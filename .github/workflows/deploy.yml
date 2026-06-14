@@ -24,8 +24,8 @@ jobs:
             cd ${{ secrets.DEPLOY_PATH }}
 
             echo "📥 拉取最新代码..."
-            git fetch --all
-            git reset --hard origin/${{ github.ref_name }}
+            git fetch origin ${{ github.ref_name }}
+            git reset --hard ${{ github.sha }}
             git clean -fd
 
             echo "🐳 重建并启动容器..."
