@@ -7,7 +7,7 @@ import { BsGithub } from "react-icons/bs";
 import ProjectCard from "@/app/components/homepage/projects/project-card";
 
 const coderFields = [
-  { key: 'name', value: 'IFOR' },
+  { key: 'name', value: 'ifor' },
   { key: 'skills', value: ['React', 'NextJS', 'TypeScript', 'Node.js', 'Docker', 'MySQL', 'MongoDB', 'Git', 'VUE', 'UNIAPP', 'MINIPROGRAM', 'GO', 'PYTHON', 'RUST'], type: 'array' },
   { key: 'hardWorker',value: true, type: 'boolean' },
   { key: 'quickLearner', value: true, type: 'boolean' },
