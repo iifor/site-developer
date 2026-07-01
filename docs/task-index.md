@@ -53,7 +53,7 @@ pnpm dev               # http://localhost:3000
 ```
 
 ### Docker 部署
-- **本机容器**：`docker compose up -d --build`（端口 3000）
+- **本机容器**：`docker compose up -d --build`（http://localhost）
 - **腾讯云生产**：`docker compose -f docker-compose.prod.yml up -d --build --wait`（Nginx 提供 80/443）
 - **自动部署**：`.github/workflows/deploy.yml`
 

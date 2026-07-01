@@ -32,6 +32,15 @@
 
 ## Docker 部署
 
+### 本机容器
+
+```bash
+docker compose up -d --build
+```
+
+- 宿主机 80 端口映射到容器内 `app:3000`
+- 本机访问地址：`http://localhost`
+
 ### 生产环境
 
 ```bash
